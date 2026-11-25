@@ -21,7 +21,7 @@ ukdale:
   block_seconds: 5
   keep_raw: true
 spark: {driver_memory: 1g, executor_memory: 1g, aqe: true, cache_policy: none, local_tmp: smoke/spark_tmp, p_values: [1, 2], P_values: [4, 16], Q_default: 4}
-run: {timeout_s: 300, seed: 1, repetitions_pilot: 1, repetitions_grid: 1, repetitions_final: 1}
+run: {timeout_s: 300, seed: 1, repetitions_pilot: 1, repetitions_grid: 1, repetitions_sizeup: 1, repetitions_final: 1}
 lots: {calibration_gb: [0.01, 0.02, 0.04], test_gb: [0.015, 0.03, 0.06], min_ratio_extremes: 4}
 selector: {max_depth: 3, margin_quantile: 0.9, deadline_scenarios: {moderate: 0.5}, fixed_P_for_b3: null}
 mining: {split: {train_end: "2020-05-31", val_end: "2020-06-30"}, k_consecutive: 3, false_alert_budget_per_day: 1.0, contamination: 0.01, incidents: TO_VERIFY}

@@ -16,7 +16,7 @@ import soundfile as sf
 from .config import load_config
 from . import windows as W
 
-FNAME = re.compile(r"vi(\d+)_(\d+)\.flac$")
+FNAME = re.compile(r"vi-?(\d+)_(\d+)\.flac$")
 
 
 @dataclass(frozen=True)
@@ -37,7 +37,7 @@ def parse_calibration(path: str | Path) -> Calibration:
 
 
 def file_start_ns(path: str | Path) -> int:
-    """Start time from filename vi<epoch_s>_<microseconds>.flac (to be verified against sample count)."""
+    """Start time from filename vi[-]<epoch_s>_<microseconds>.flac (verify against sample count)."""
     m = FNAME.search(str(path))
     if not m:
         raise ValueError(f"unexpected UK-DALE filename: {path}")

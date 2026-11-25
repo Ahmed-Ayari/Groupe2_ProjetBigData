@@ -15,6 +15,7 @@ import pandas as pd
 import requests
 
 from .config import load_config, resolve
+from .lots import lot_targets
 from .ukdale import FNAME, file_start_ns
 
 HDR = {"User-Agent": "Groupe2-ProjetBigData/1.0 (academic dataset retrieval)"}
@@ -216,7 +217,6 @@ def crawl_weeks(base: str, house: str, weeks: list[str], cache: dict) -> list[st
                 f"No .flac links were found in {directory}. The page may be JavaScript-rendered. "
                 "Save the .flac URLs copied from the browser, one per line, then rerun with --filelist PATH."
             )
-            print(message)
             raise SystemExit(message)
         cache["weeks"][week] = files
     return sorted({f for week in weeks for f in cache["weeks"][week]}, key=file_start_ns)
@@ -232,26 +232,32 @@ def head_size(url: str) -> int:
         raise ValueError(f"missing/invalid Content-Length for {download_url}") from exc
 
 
-def _lot_targets(cfg: dict) -> list[float]:
-    cal, test = cfg["lots"]["calibration_gb"], cfg["lots"]["test_gb"]
-    targets = []
-    for i in range(max(len(cal), len(test))):
-        if i < len(cal):
-            targets.append(float(cal[i]) * 2**30)
-        if i < len(test):
-            targets.append(float(test[i]) * 2**30)
-    return targets
+def _lot_targets(cfg: dict) -> list[tuple[str, str, float]]:
+    return lot_targets(cfg["lots"]["calibration_gb"], cfg["lots"]["test_gb"])
 
 
-def _covers_lots(files: list[str], sizes: dict[str, int], targets: list[float], gap_files: int = 1) -> bool:
+def _covers_lots(
+    files: list[str],
+    sizes: dict[str, int],
+    targets: list[tuple[str, str, float]],
+    gap_files: int = 1,
+    min_ratio: float = 4,
+) -> bool:
     index = 0
-    for target_i, target in enumerate(targets):
+    realized_sizes: dict[str, list[int]] = {}
+    for target_i, (_, split, target_gb) in enumerate(targets):
+        target_bytes = target_gb * 2**30
+        is_largest = not any(later_split == split for _, later_split, _ in targets[target_i + 1:])
+        goal_bytes = target_bytes
+        if is_largest and realized_sizes.get(split):
+            goal_bytes = max(goal_bytes, min(realized_sizes[split]) * min_ratio)
         total = 0
-        while total < target:
+        while total < goal_bytes:
             if index >= len(files) or files[index] not in sizes:
                 return False
             total += sizes[files[index]]
             index += 1
+        realized_sizes.setdefault(split, []).append(total)
         if target_i < len(targets) - 1:
             index += gap_files
             if index > len(files):
@@ -286,6 +292,7 @@ def build_ukdale_manifest(
 
     sizes: dict[str, int] = {str(k): int(v) for k, v in cache["sizes"].items()}
     targets = _lot_targets(cfg)
+    min_ratio = float(cfg["lots"]["min_ratio_extremes"])
     head_workers = min(max(1, workers), MAX_HEAD_WORKERS)
     processed: list[str] = []
     index = 0
@@ -298,13 +305,13 @@ def build_ukdale_manifest(
                 if rel not in sizes:
                     batch.append((rel, pool.submit(head_size, urljoin(u["base_url"], rel))))
                 index += 1
-                if _covers_lots(processed, sizes, targets):
+                if _covers_lots(processed, sizes, targets, min_ratio=min_ratio):
                     break
             for rel, future in batch:
                 sizes[rel] = future.result()
             cache["sizes"].update({rel: sizes[rel] for rel in processed if rel in sizes})
             _save_listing_cache(cache_file, cache)
-            if _covers_lots(processed, sizes, targets):
+            if _covers_lots(processed, sizes, targets, min_ratio=min_ratio):
                 break
 
     selected = processed
@@ -322,7 +329,7 @@ def build_ukdale_manifest(
     })
     man.mkdir(parents=True, exist_ok=True)
     df.to_csv(man / "ukdale_all.csv", index=False)
-    if not _covers_lots(selected, sizes, targets):
+    if not _covers_lots(selected, sizes, targets, min_ratio=min_ratio):
         total = sum(sizes[f] for f in selected)
         print(
             f"Listed and sized {len(selected)} of at most {max_files} files "

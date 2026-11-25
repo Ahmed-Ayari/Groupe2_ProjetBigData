@@ -3,7 +3,7 @@ import json
 import numpy as np
 import pandas as pd
 import pytest
-from bigdata import selector as S, lots as L
+from bigdata import campaign as C, selector as S, lots as L
 from bigdata.config import ROOT, load_config
 from bigdata.runner import ALL
 
@@ -64,6 +64,38 @@ def test_choose_returns_explicit_infeasible(tmp_path, cfg):
     assert S.choose(m, row, D=0.001, margin=0.0, cands=S.candidates(c))["feasible"] is False
 
 
+def test_final_budget_specs_work_before_fit_and_cover_maximum_decisions(tmp_path, cfg):
+    c = json.loads(json.dumps(cfg))
+    c["paths"]["manifests"] = str(tmp_path)
+    c["run"]["repetitions_final"] = 2
+    c["selector"]["deadline_scenarios"] = {"moderate": 0.5, "tight": 0.8}
+    (tmp_path / "splits.json").write_text(json.dumps({
+        "cal_1": {"split": "calibration", "source_gb": 0.5},
+        "test_1": {"split": "test", "source_gb": 0.75},
+        "test_2": {"split": "test", "source_gb": 1.5},
+    }))
+
+    specs = C.final_budget_specs(c)
+
+    assert len(specs) == 2 * 2 * (2 + 2 * 4)
+    assert len({spec.run_id() for spec in specs}) == len(specs)
+    assert {spec.method for spec in specs} == {"B0", "B1", "B2", "B3", "B4", "B4_nomargin"}
+
+
+def test_sizeup_repetitions_are_independent_of_grid_repetitions(tmp_path, cfg):
+    c = json.loads(json.dumps(cfg))
+    c["paths"]["manifests"] = str(tmp_path)
+    c["run"]["repetitions_grid"] = 3
+    c["run"]["repetitions_sizeup"] = 2
+    (tmp_path / "splits.json").write_text(json.dumps({
+        "cal_1": {"split": "calibration", "source_gb": 0.5},
+    }))
+
+    specs = C.sizeup_specs(c, "calibration", 64)
+
+    assert {spec.repetition for spec in specs} == {1, 2}
+
+
 def test_lots_disjoint_and_ratio():
     files = pd.DataFrame({"local_path": [f"f{i}" for i in range(500)], "start": range(500), "source_bytes": [24 * 2**20] * 500})
     lots = L.plan_lots(files, [0.5, 1, 2], [0.75, 1.5, 3])
@@ -72,6 +104,20 @@ def test_lots_disjoint_and_ratio():
     lots["cal_1"] = pd.concat([lots["cal_1"], lots["test_1"].iloc[:1].assign(split="calibration")])
     with pytest.raises(AssertionError):
         L.check_disjoint(lots)
+
+
+def test_lots_expand_largest_to_keep_realized_ratio_with_large_files():
+    file_bytes = int(0.2 * 2**30)
+    files = pd.DataFrame({
+        "local_path": [f"f{i}" for i in range(100)],
+        "start": range(100),
+        "source_bytes": [file_bytes] * 100,
+    })
+    lots = L.plan_lots(files, [0.25, 0.5, 1.0], [0.4, 0.8, 1.6])
+    assert L.ratio_ok(lots, "calibration", 4)
+    assert L.ratio_ok(lots, "test", 4)
+    assert lots["cal_3"].source_bytes.sum() >= 4 * lots["cal_1"].source_bytes.sum()
+    assert lots["test_3"].source_bytes.sum() >= 4 * lots["test_1"].source_bytes.sum()
 
 
 def test_default_lot_targets_keep_requested_extreme_ratio():

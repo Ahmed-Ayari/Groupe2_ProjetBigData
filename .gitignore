@@ -2,9 +2,22 @@ data/
 smoke/
 dist/
 __pycache__/
+*.py[cod]
 .pytest_cache/
 .venv/
+
+# Generated experiment artifacts; keep runs.csv and summary CSV/JSON evidence trackable.
 results/out/
+results/eventlogs/
+results/reference/
+results/equivalence/
+results/figures/
+results/metropt_scores.parquet
+
+# Local UK-DALE manifests contain absolute paths and can be regenerated.
+manifests/lots/
+manifests/splits.json
+
 logs/
 manifests/ukdale_all.csv
 manifests/ukdale_listing_cache.json

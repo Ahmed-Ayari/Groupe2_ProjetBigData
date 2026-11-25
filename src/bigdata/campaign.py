@@ -83,7 +83,7 @@ def sizeup_specs(cfg: dict, split: str, P: int, Q: int | None = None, reps: int 
     """Q1 and size-up: every lot of a split, B0, B1 (Spark p=1) and Spark at each p, fixed P."""
     sc = cfg["spark"]
     Q = Q or sc["Q_default"]
-    reps = reps or cfg["run"]["repetitions_grid"]
+    reps = reps or cfg["run"].get("repetitions_sizeup", cfg["run"]["repetitions_grid"])
     out = []
     for lot in lots_of(cfg, split):
         for r in range(1, reps + 1):
@@ -109,6 +109,26 @@ def final_specs(cfg: dict, decisions: dict) -> list[Spec]:
         for r in range(1, reps + 1):
             out.append(Spec(d["method"], "ukdale", "spark", d["lot"], "A", "raw", f"{d['scenario']}", d["p"], d["P"], Q, 1, "hash",
                             "write", r, deadline_s=d["deadline_s"], split="test"))
+    return out
+
+
+def final_budget_specs(cfg: dict) -> list[Spec]:
+    """Conservative pre-fit budget: assume every selector decision is feasible."""
+    reps, sc = cfg["run"]["repetitions_final"], cfg["spark"]
+    Q = sc["Q_default"]
+    test_lots = lots_of(cfg, "test")
+    p, P = max(sc["p_values"]), max(sc["P_values"])
+    out = []
+    for lot in test_lots:
+        for r in range(1, reps + 1):
+            out.append(Spec("B0", "ukdale", "local", lot, "A", "raw", "local", repetition=r, split="test"))
+            out.append(Spec("B1", "ukdale", "spark", lot, "A", "raw", "single-node", 1, P, Q, 1, "hash", "write", r, split="test"))
+    for scenario in cfg["selector"]["deadline_scenarios"]:
+        for lot in test_lots:
+            for method in ("B2", "B3", "B4", "B4_nomargin"):
+                for r in range(1, reps + 1):
+                    out.append(Spec(method, "ukdale", "spark", lot, "A", "raw", scenario, p, P, Q, 1, "hash",
+                                    "write", r, split="test"))
     return out
 
 
@@ -145,13 +165,22 @@ if __name__ == "__main__":
     cfg = load_config()
     cal = lots_of(cfg, "calibration")
     if a.what == "pilot":
-        lot = a.lot or cal[0]; ensure_prepared(cfg, [lot]); specs = pilot_specs(cfg, lot)
+        lot = a.lot or cal[0]; prepare_lots = [lot]; specs = pilot_specs(cfg, lot)
     elif a.what == "grid":
-        lot = a.lot or cal[len(cal) // 2]; ensure_prepared(cfg, [lot]); specs = grid_specs(cfg, lot)
+        lot = a.lot or cal[len(cal) // 2]; prepare_lots = [lot]; specs = grid_specs(cfg, lot)
     elif a.what.startswith("sizeup"):
         sp = "calibration" if a.what.endswith("cal") else "test"
-        ensure_prepared(cfg, lots_of(cfg, sp)); specs = sizeup_specs(cfg, sp, a.P or cfg["spark"]["P_values"][1])
+        prepare_lots = lots_of(cfg, sp); specs = sizeup_specs(cfg, sp, a.P or cfg["spark"]["P_values"][1])
     else:
-        dec = json.loads((resolve(cfg, "results") / "decisions.json").read_text())
-        ensure_prepared(cfg, lots_of(cfg, "test")); specs = final_specs(cfg, dec)
+        decision_path = resolve(cfg, "results") / "decisions.json"
+        prepare_lots = lots_of(cfg, "test")
+        if decision_path.exists():
+            specs = final_specs(cfg, json.loads(decision_path.read_text()))
+        elif a.budget_only:
+            print("No fit decisions found; final budget is an upper bound assuming every selector decision is feasible.")
+            specs = final_budget_specs(cfg)
+        else:
+            raise SystemExit("run `python -m bigdata.selector fit` before the final campaign")
+    if not a.budget_only:
+        ensure_prepared(cfg, prepare_lots)
     execute(specs, cfg, a.budget_only)

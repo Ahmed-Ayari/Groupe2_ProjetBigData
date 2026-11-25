@@ -1,0 +1,315 @@
+{
+  "model": "loglinear",
+  "cv": {
+    "rule_volume": {
+      "mape": 0.2588360473759193,
+      "mae_s": 3.808223445343833
+    },
+    "loglinear": {
+      "mape": 0.0918062230193333,
+      "mae_s": 1.3200485244425424
+    },
+    "tree_depth<=3": {
+      "mape": 0.24112840279005446,
+      "mae_s": 3.750460025844663
+    }
+  },
+  "margin_s": 3.8793680173988707,
+  "margin_quantile": 0.9,
+  "n_calibration_runs": 63,
+  "calibration_lots": [
+    "cal_1",
+    "cal_2",
+    "cal_3"
+  ],
+  "B2": {
+    "p": 2,
+    "P": 256
+  },
+  "B2_by_scenario": {
+    "moderate": {
+      "p": 2,
+      "P": 256
+    },
+    "tight": {
+      "p": 4,
+      "P": 256
+    }
+  },
+  "deadlines": {
+    "moderate": {
+      "throughput_Bps": 46656016.68956481,
+      "test_1": 12.5841293933547,
+      "test_2": 21.908358482489525,
+      "test_3": 50.833443171552545,
+      "cal_1": 8.414253463000932,
+      "cal_2": 12.931228377559712,
+      "cal_3": 35.297499419155
+    },
+    "tight": {
+      "throughput_Bps": 37298625.78205274,
+      "test_1": 15.741205974470821,
+      "test_2": 27.404675576327502,
+      "test_3": 63.58641701328315,
+      "cal_1": 10.525201445595846,
+      "cal_2": 16.175384329851205,
+      "cal_3": 44.15285248370793
+    }
+  },
+  "decisions": [
+    {
+      "lot": "test_1",
+      "scenario": "moderate",
+      "deadline_s": 12.5841293933547,
+      "method": "B3",
+      "feasible": false,
+      "T_hat_min": 10.480300627158629
+    },
+    {
+      "lot": "test_1",
+      "scenario": "moderate",
+      "deadline_s": 12.5841293933547,
+      "method": "B4",
+      "feasible": false,
+      "T_hat_min": 10.421413254102347
+    },
+    {
+      "lot": "test_1",
+      "scenario": "moderate",
+      "deadline_s": 12.5841293933547,
+      "method": "B4_nomargin",
+      "feasible": true,
+      "p": 4,
+      "P": 16,
+      "T_hat": 10.421413254102347,
+      "cost_hat": 41.68565301640939
+    },
+    {
+      "lot": "test_1",
+      "scenario": "moderate",
+      "deadline_s": 12.5841293933547,
+      "method": "B2",
+      "feasible": true,
+      "p": 2,
+      "P": 256,
+      "T_hat": 12.695840278276346
+    },
+    {
+      "lot": "test_2",
+      "scenario": "moderate",
+      "deadline_s": 21.908358482489525,
+      "method": "B3",
+      "feasible": true,
+      "p": 2,
+      "P": 256,
+      "T_hat": 17.245689792601677,
+      "cost_hat": 34.491379585203354
+    },
+    {
+      "lot": "test_2",
+      "scenario": "moderate",
+      "deadline_s": 21.908358482489525,
+      "method": "B4",
+      "feasible": true,
+      "p": 2,
+      "P": 16,
+      "T_hat": 17.148788624919668,
+      "cost_hat": 34.297577249839335
+    },
+    {
+      "lot": "test_2",
+      "scenario": "moderate",
+      "deadline_s": 21.908358482489525,
+      "method": "B4_nomargin",
+      "feasible": true,
+      "p": 1,
+      "P": 16,
+      "T_hat": 20.774049246612954,
+      "cost_hat": 20.774049246612954
+    },
+    {
+      "lot": "test_2",
+      "scenario": "moderate",
+      "deadline_s": 21.908358482489525,
+      "method": "B2",
+      "feasible": true,
+      "p": 2,
+      "P": 256,
+      "T_hat": 17.245689792601677
+    },
+    {
+      "lot": "test_3",
+      "scenario": "moderate",
+      "deadline_s": 50.833443171552545,
+      "method": "B3",
+      "feasible": true,
+      "p": 1,
+      "P": 256,
+      "T_hat": 33.258710677745256,
+      "cost_hat": 33.258710677745256
+    },
+    {
+      "lot": "test_3",
+      "scenario": "moderate",
+      "deadline_s": 50.833443171552545,
+      "method": "B4",
+      "feasible": true,
+      "p": 1,
+      "P": 16,
+      "T_hat": 33.0718345400535,
+      "cost_hat": 33.0718345400535
+    },
+    {
+      "lot": "test_3",
+      "scenario": "moderate",
+      "deadline_s": 50.833443171552545,
+      "method": "B4_nomargin",
+      "feasible": true,
+      "p": 1,
+      "P": 16,
+      "T_hat": 33.0718345400535,
+      "cost_hat": 33.0718345400535
+    },
+    {
+      "lot": "test_3",
+      "scenario": "moderate",
+      "deadline_s": 50.833443171552545,
+      "method": "B2",
+      "feasible": true,
+      "p": 2,
+      "P": 256,
+      "T_hat": 27.454763035328934
+    },
+    {
+      "lot": "test_1",
+      "scenario": "tight",
+      "deadline_s": 15.741205974470821,
+      "method": "B3",
+      "feasible": true,
+      "p": 4,
+      "P": 256,
+      "T_hat": 10.480300627158629,
+      "cost_hat": 41.921202508634515
+    },
+    {
+      "lot": "test_1",
+      "scenario": "tight",
+      "deadline_s": 15.741205974470821,
+      "method": "B4",
+      "feasible": true,
+      "p": 4,
+      "P": 16,
+      "T_hat": 10.421413254102347,
+      "cost_hat": 41.68565301640939
+    },
+    {
+      "lot": "test_1",
+      "scenario": "tight",
+      "deadline_s": 15.741205974470821,
+      "method": "B4_nomargin",
+      "feasible": true,
+      "p": 1,
+      "P": 16,
+      "T_hat": 15.293329193546674,
+      "cost_hat": 15.293329193546674
+    },
+    {
+      "lot": "test_1",
+      "scenario": "tight",
+      "deadline_s": 15.741205974470821,
+      "method": "B2",
+      "feasible": true,
+      "p": 4,
+      "P": 256,
+      "T_hat": 10.480300627158629
+    },
+    {
+      "lot": "test_2",
+      "scenario": "tight",
+      "deadline_s": 27.404675576327502,
+      "method": "B3",
+      "feasible": true,
+      "p": 1,
+      "P": 256,
+      "T_hat": 20.891435359038127,
+      "cost_hat": 20.891435359038127
+    },
+    {
+      "lot": "test_2",
+      "scenario": "tight",
+      "deadline_s": 27.404675576327502,
+      "method": "B4",
+      "feasible": true,
+      "p": 1,
+      "P": 16,
+      "T_hat": 20.774049246612954,
+      "cost_hat": 20.774049246612954
+    },
+    {
+      "lot": "test_2",
+      "scenario": "tight",
+      "deadline_s": 27.404675576327502,
+      "method": "B4_nomargin",
+      "feasible": true,
+      "p": 1,
+      "P": 16,
+      "T_hat": 20.774049246612954,
+      "cost_hat": 20.774049246612954
+    },
+    {
+      "lot": "test_2",
+      "scenario": "tight",
+      "deadline_s": 27.404675576327502,
+      "method": "B2",
+      "feasible": true,
+      "p": 4,
+      "P": 256,
+      "T_hat": 14.236160001039705
+    },
+    {
+      "lot": "test_3",
+      "scenario": "tight",
+      "deadline_s": 63.58641701328315,
+      "method": "B3",
+      "feasible": true,
+      "p": 1,
+      "P": 256,
+      "T_hat": 33.258710677745256,
+      "cost_hat": 33.258710677745256
+    },
+    {
+      "lot": "test_3",
+      "scenario": "tight",
+      "deadline_s": 63.58641701328315,
+      "method": "B4",
+      "feasible": true,
+      "p": 1,
+      "P": 16,
+      "T_hat": 33.0718345400535,
+      "cost_hat": 33.0718345400535
+    },
+    {
+      "lot": "test_3",
+      "scenario": "tight",
+      "deadline_s": 63.58641701328315,
+      "method": "B4_nomargin",
+      "feasible": true,
+      "p": 1,
+      "P": 16,
+      "T_hat": 33.0718345400535,
+      "cost_hat": 33.0718345400535
+    },
+    {
+      "lot": "test_3",
+      "scenario": "tight",
+      "deadline_s": 63.58641701328315,
+      "method": "B2",
+      "feasible": true,
+      "p": 4,
+      "P": 256,
+      "T_hat": 22.66365706805455
+    }
+  ],
+  "fit_and_select_seconds": 0.13361526500011678,
+  "calibration_cost_s": 1250.2277054349906
+}

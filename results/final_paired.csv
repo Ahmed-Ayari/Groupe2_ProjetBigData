@@ -1,0 +1,3 @@
+scenario,comparison,mean_ratio,ci_low,ci_high,n_lots,ci_method
+moderate,cost B4/B3 (paired by lot),0.9927875280829803,0.9877384371888194,0.9978366189771413,2,"percentile bootstrap over lots, 5000 resamples; wide with few lots; not a coverage guarantee"
+tight,cost B4/B3 (paired by lot),0.995446999135759,0.990966790118453,0.9978307269263847,3,"percentile bootstrap over lots, 5000 resamples; wide with few lots; not a coverage guarantee"

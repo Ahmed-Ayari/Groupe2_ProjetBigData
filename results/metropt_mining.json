@@ -1,0 +1,11 @@
+{
+  "threshold": 0.5741113225306826,
+  "n_features": 76,
+  "k_consecutive": 3,
+  "validation_days": 42.041666666666664,
+  "false_alerts_per_day": 0.3753359941353751,
+  "incidents_evaluable": 0,
+  "incidents_detected": 0,
+  "median_detection_delay_min": null,
+  "claim": "detection of an ongoing incident, not failure prediction"
+}
