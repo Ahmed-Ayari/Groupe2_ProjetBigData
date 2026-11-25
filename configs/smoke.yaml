@@ -1,0 +1,27 @@
+# Tiny synthetic configuration for smoke tests only. NOT for reported results.
+paths:
+  data_raw: smoke/raw
+  data_prepared: smoke/prepared
+  manifests: smoke/manifests
+  results: smoke/results
+  min_free_disk_gb: 1
+windows: {metropt_s: 300, ukdale_s: 1, history_s: 300, half_open: true}
+tolerances:
+  default: {atol: 1.0e-9, rtol: 1.0e-9}
+  ukdale: {atol: 1.0e-6, rtol: 1.0e-7}
+  nan_rule: equal_nan
+metropt: {url: "", equipment_id: metro1, timestamp_col: timestamp, chunk_rows: 5000}
+ukdale:
+  base_url: ""
+  house: house_1
+  calibration_file: calibration_house_1.cfg
+  sample_rate_hz: 16000
+  channel_order: [voltage, current]
+  int_shift_bits: auto
+  block_seconds: 5
+  keep_raw: true
+spark: {driver_memory: 1g, executor_memory: 1g, aqe: true, cache_policy: none, local_tmp: smoke/spark_tmp, p_values: [1, 2], P_values: [4, 16], Q_default: 4}
+run: {timeout_s: 300, seed: 1, repetitions_pilot: 1, repetitions_grid: 1, repetitions_final: 1}
+lots: {calibration_gb: [0.01, 0.02, 0.04], test_gb: [0.015, 0.03, 0.06], min_ratio_extremes: 4}
+selector: {max_depth: 3, margin_quantile: 0.9, deadline_scenarios: {moderate: 0.5}, fixed_P_for_b3: null}
+mining: {split: {train_end: "2020-05-31", val_end: "2020-06-30"}, k_consecutive: 3, false_alert_budget_per_day: 1.0, contamination: 0.01, incidents: TO_VERIFY}

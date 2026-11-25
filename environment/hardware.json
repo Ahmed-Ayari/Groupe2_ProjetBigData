@@ -1,0 +1,13 @@
+{
+  "cpu_logical": 8,
+  "cpu_physical": 4,
+  "ram_gb": 15.5,
+  "disk_free_gb": 303.3,
+  "os": "Linux-6.12.118+deb13-amd64-x86_64-with-glibc2.41",
+  "python": "3.13.5",
+  "java": "java version \"25.0.4.1\" 2026-08-18 LTS",
+  "pyspark": "4.3.0",
+  "numpy": "2.5.5",
+  "pandas": "3.1.1",
+  "environment_id": "4c-15.5g-spark4.3.0"
+}

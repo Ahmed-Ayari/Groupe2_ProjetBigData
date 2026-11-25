@@ -1,0 +1,62 @@
+# Single source of truth for all experiments. Override with BIGDATA_CONFIG=configs/smoke.yaml
+paths:
+  data_raw: data/raw
+  data_prepared: data/prepared
+  manifests: manifests
+  results: results
+  min_free_disk_gb: 10          # acquisition stops below this
+windows:
+  metropt_s: 300                # 5 minutes
+  ukdale_s: 1                   # same for B0..B4
+  history_s: 300                # Treatment B: mean over previous 5 minutes (by TIME)
+  half_open: true               # windows are [start, start+w)
+tolerances:                     # |a-b| <= atol + rtol*|b|  (np.isclose); frozen
+  default: {atol: 1.0e-9, rtol: 1.0e-9}
+  ukdale: {atol: 1.0e-6, rtol: 1.0e-7}
+  nan_rule: equal_nan           # NaN == NaN accepted, NaN vs value is a failure
+metropt:
+  url: https://archive.ics.uci.edu/static/public/791/metropt%2B3%2Bdataset.zip
+  equipment_id: metro1
+  timestamp_col: timestamp
+  chunk_rows: 200000
+ukdale:
+  list_base_url: https://data.ceda.ac.uk/edc/d1/887733b3-4c04-471f-9404-9f7459c4a1a0/data/version_0/
+  base_url: https://dap.ceda.ac.uk/edc/d1/887733b3-4c04-471f-9404-9f7459c4a1a0/data/version_0/
+  house: house_1
+  calibration_file: calibration_house_1.cfg
+  sample_rate_hz: 16000
+  channel_order: [voltage, current]   # VERIFY with `python -m bigdata.ukdale verify FILE`
+  int_shift_bits: auto                # auto: 8 if PCM_24 read as int32 (left-justified), else 0
+  block_seconds: 60
+  keep_raw: true                      # keep FLAC during the campaign; purge with `make purge-raw`
+spark:
+  driver_memory: 4g
+  executor_memory: 4g                 # unused in local mode but recorded
+  aqe: true
+  cache_policy: none
+  local_tmp: data/spark_tmp
+  p_values: [1, 2, 4]
+  P_values: [16, 64, 256]
+  Q_default: 8                        # read partitions for UK-DALE file lists
+run:
+  timeout_s: 3600                     # per run; TIMEOUT recorded as censored
+  seed: 20261124
+  repetitions_pilot: 3
+  repetitions_grid: 3
+  repetitions_final: 5
+lots:
+  # target source GB per lot; calibration and test are disjoint sets of files (by week)
+  calibration_gb: [0.25, 0.5, 1.0]
+  test_gb: [0.4, 0.8, 1.6]
+  min_ratio_extremes: 4
+selector:
+  max_depth: 3
+  margin_quantile: 0.9
+  deadline_scenarios: {moderate: 0.5, tight: 0.8}   # quantile of calibration throughput
+  fixed_P_for_b3: null                              # null = P chosen by B2 on calibration
+mining:
+  split: {train_end: "2020-06-07 21:36:00", val_end: "2020-07-20 12:48:00"}
+  k_consecutive: 3
+  false_alert_budget_per_day: 1.0
+  contamination: 0.01
+  incidents: configs/metropt_incidents.csv

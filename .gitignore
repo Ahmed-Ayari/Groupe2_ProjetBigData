@@ -1,0 +1,10 @@
+data/
+smoke/
+dist/
+__pycache__/
+.pytest_cache/
+.venv/
+results/out/
+logs/
+manifests/ukdale_all.csv
+manifests/ukdale_listing_cache.json
