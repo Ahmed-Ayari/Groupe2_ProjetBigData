@@ -12,6 +12,7 @@ from .config import load_config, resolve
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--dataset", choices=["metropt", "ukdale"], required=True)
+    ap.add_argument("--method", default="MANUAL")
     ap.add_argument("--engine", choices=["local", "spark"], required=True)
     ap.add_argument("--workload", choices=["A", "B"], default="A")
     ap.add_argument("--scope", choices=["raw", "prepared"], default="raw")
@@ -80,7 +81,10 @@ def main() -> None:
         if a.engine == "local":
             from . import local_ref, windows as W
             if a.scope == "raw":
-                df = local_ref.ukdale_treatment_a(files, cal, cfg)
+                if a.method == "B0mp":
+                    df = local_ref.ukdale_treatment_a_mp(files, cal, cfg, a.p)
+                else:
+                    df = local_ref.ukdale_treatment_a(files, cal, cfg)
             else:
                 parts = pd.concat([pd.read_parquet(f) for f in pfiles], ignore_index=True)
                 df = W.uk_finalize(W.uk_merge(parts), w_u, u["house"])

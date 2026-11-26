@@ -1,4 +1,4 @@
-"""Data mining on MetroPT-3 window indicators: IsolationForest with chronological splits.
+"""Expanding-window anomaly detection evaluation for verified MetroPT-3 incidents.
 
 Detects an ONGOING abnormal behaviour; it does not demonstrate failure prediction.
 Incident intervals come from the configured, source-documented CSV; evaluation stops if it is missing or unverified.
@@ -20,12 +20,6 @@ def features(cfg: dict, source: Path) -> pd.DataFrame:
     b = local_ref.metropt_treatment_b(a, cfg)
     b["t"] = pd.to_datetime(b["window_start_s"], unit="s")
     return b
-
-
-def split_masks(df: pd.DataFrame, cfg: dict):
-    s = cfg["mining"]["split"]
-    tr_end, va_end = pd.Timestamp(s["train_end"]), pd.Timestamp(s["val_end"])
-    return df.t < tr_end, (df.t >= tr_end) & (df.t < va_end), df.t >= va_end
 
 
 def load_incidents(path: Path) -> pd.DataFrame | None:
@@ -54,61 +48,101 @@ def episodes(flag: np.ndarray, k: int) -> list[tuple[int, int]]:
     return out
 
 
+def _false_alert_threshold(scores: np.ndarray, k: int, budget: float, validation_days: float) -> tuple[float, float]:
+    for q in np.linspace(0.90, 0.9999, 400):
+        threshold = float(np.quantile(scores, q))
+        rate = len(episodes(scores > threshold, k)) / validation_days
+        if rate <= budget:
+            return threshold, rate
+    return float(np.max(scores)) + np.finfo(float).eps, 0.0
+
+
+def evaluate_incidents(df: pd.DataFrame, X: pd.DataFrame, incidents: pd.DataFrame, cfg: dict) -> dict:
+    """Fit independently before each incident; validate on its preceding normal day."""
+    k = int(cfg["mining"]["k_consecutive"])
+    budget = float(cfg["mining"]["false_alert_budget_per_day"])
+    incident_mask = pd.Series(False, index=df.index)
+    for incident in incidents.itertuples():
+        incident_mask |= (df.t >= incident.start) & (df.t <= incident.end)
+
+    per_incident, scored = [], []
+    false_alert_total = 0
+    normal_days_total = 0.0
+    for idx, incident in enumerate(incidents.itertuples(), 1):
+        validation_start = incident.start - pd.Timedelta(days=1)
+        training = (df.t < validation_start) & ~incident_mask
+        validation = (df.t >= validation_start) & (df.t < incident.start) & ~incident_mask
+        test_start, test_end = incident.start - pd.Timedelta(days=1), incident.end + pd.Timedelta(days=1)
+        test = (df.t >= test_start) & (df.t <= test_end)
+        if int(training.sum()) < 2 or int(validation.sum()) < k or int(test.sum()) == 0:
+            raise ValueError(f"insufficient history or validation data for incident {idx} ({incident.start})")
+
+        scaler = StandardScaler().fit(X.loc[training])
+        iso = IsolationForest(n_estimators=200, contamination=cfg["mining"]["contamination"],
+                              random_state=cfg["run"]["seed"]).fit(scaler.transform(X.loc[training]))
+        validation_score = -iso.score_samples(scaler.transform(X.loc[validation]))
+        validation_days = max((df.loc[validation, "t"].max() - df.loc[validation, "t"].min()).total_seconds() / 86400, 1e-9)
+        threshold, validation_false_rate = _false_alert_threshold(validation_score, k, budget, validation_days)
+
+        test_df = df.loc[test].copy()
+        test_scores = -iso.score_samples(scaler.transform(X.loc[test]))
+        test_df["score"] = test_scores
+        flag = test_scores > threshold
+        eps = episodes(flag, k)
+        inside = ((test_df.t >= incident.start) & (test_df.t <= incident.end)).to_numpy()
+        hits = [episode for episode in eps if incident.start <= test_df.t.iloc[episode[0]] <= incident.end]
+        detected = bool(hits)
+        delay = ((test_df.t.iloc[hits[0][0]] - incident.start).total_seconds() / 60) if detected else None
+        outside = [episode for episode in eps if not inside[episode[1]]]
+        incident_days = max((incident.end - incident.start).total_seconds() / 86400, 0.0)
+        outside_days = max((test_df.t.max() - test_df.t.min()).total_seconds() / 86400 - incident_days, 1e-9)
+        false_per_day = len(outside) / outside_days
+        false_alert_total += len(outside)
+        normal_days_total += outside_days
+        per_incident.append({
+            "incident": idx, "start": incident.start.isoformat(), "end": incident.end.isoformat(),
+            "detected": detected, "detection_delay_min": delay,
+            "false_alerts_outside_incident": len(outside), "false_alerts_per_day_outside_incident": false_per_day,
+            "validation_false_alerts_per_day": validation_false_rate,
+            "validation_false_alert_budget_per_day": budget, "threshold": threshold,
+            "training_windows": int(training.sum()), "validation_windows": int(validation.sum()),
+            "test_windows": int(test.sum()),
+        })
+        test_df["incident"] = idx
+        scored.append(test_df[["equipment_id", "window_id", "t", "score", "incident"]])
+
+    delays = [r["detection_delay_min"] for r in per_incident if r["detected"]]
+    return {
+        "evaluation": "expanding-window ongoing-incident detection; not failure prediction",
+        "incidents_evaluable": len(per_incident), "incidents_detected": sum(r["detected"] for r in per_incident),
+        "detection_rate": sum(r["detected"] for r in per_incident) / len(per_incident),
+        "median_detection_delay_min": float(np.median(delays)) if delays else None,
+        "false_alerts_per_day_outside_incidents": false_alert_total / normal_days_total,
+        "incidents": per_incident,
+        "note": "The first incident (18 Apr) has comparatively little history for training.",
+        "claim": "detection of an ongoing incident only, never prediction",
+        "scored_windows": pd.concat(scored, ignore_index=True),
+    }
+
+
 def run(cfg: dict, source: Path) -> dict:
     df = features(cfg, source)
     num = [c for c in df.columns if c.endswith(("__mean", "__max", "__std_pop")) or c.startswith(("delta_", "hist_"))] + ["prev_missing"]
     X = df[num].fillna(0.0)
-    tr, va, te = split_masks(df, cfg)
-    if min(int(tr.sum()), int(va.sum()), int(te.sum())) == 0:
-        raise SystemExit(f"empty split (train/val/test windows = {int(tr.sum())}/{int(va.sum())}/{int(te.sum())}); "
-                         f"data covers {df.t.min()} to {df.t.max()}: set mining.split dates in the config from the audit")
     incident_path = Path(cfg["mining"]["incidents"])
     if not incident_path.is_absolute():
         incident_path = ROOT / incident_path
     inc = load_incidents(incident_path)
-    # training periods: windows outside documented incidents (unknown status is NOT assumed healthy beyond this)
-    normal = pd.Series(True, index=df.index)
-    if inc is not None:
-        for r in inc.itertuples():
-            normal &= ~((df.t >= r.start) & (df.t <= r.end))
-    sc = StandardScaler().fit(X[tr & normal])
-    iso = IsolationForest(n_estimators=200, contamination=cfg["mining"]["contamination"], random_state=cfg["run"]["seed"]).fit(sc.transform(X[tr & normal]))
-    score = -iso.score_samples(sc.transform(X))                    # higher = more abnormal
-    df["score"] = score
-    k, budget = cfg["mining"]["k_consecutive"], cfg["mining"]["false_alert_budget_per_day"]
-    va_norm = va & normal
-    days = max((df.t[va].max() - df.t[va].min()).total_seconds() / 86400, 1e-9)
-    thr = None
-    for q in np.linspace(0.90, 0.9999, 400):                       # lowest threshold meeting the validation false-alert budget
-        cand = np.quantile(score[va_norm], q)
-        eps = episodes((score[va] > cand) & va_norm[va].to_numpy(), k)
-        if len(eps) / days <= budget:
-            thr = float(cand); break
-    out = {"threshold": thr, "n_features": len(num), "k_consecutive": k, "validation_days": days}
+    out = {"n_features": len(num), "k_consecutive": cfg["mining"]["k_consecutive"]}
     if inc is None:
         out["evaluation"] = (f"STOPPED: {incident_path} is missing or not verified "
                              "(start,end,label,verified=yes); no incident dates are invented by this code.")
         resolve(cfg, "results").mkdir(parents=True, exist_ok=True)
-        df[["equipment_id", "window_id", "t", "score"]].to_parquet(resolve(cfg, "results") / "metropt_scores.parquet", index=False)
         return out
-    tt = df[te].reset_index(drop=True)
-    flag = (tt.score > thr).to_numpy()
-    eps = episodes(flag, k)
-    test_days = max((tt.t.max() - tt.t.min()).total_seconds() / 86400, 1e-9)
-    in_inc = np.zeros(len(tt), bool)
-    for r in inc.itertuples():
-        in_inc |= ((tt.t >= r.start) & (tt.t <= r.end)).to_numpy()
-    false_eps = [e for e in eps if not in_inc[e[1]]]
-    evaluable = [r for r in inc.itertuples() if r.start >= tt.t.min() and r.end <= tt.t.max()]
-    detected, delays = 0, []
-    for r in evaluable:
-        hits = [e for e in eps if r.start <= tt.t[e[0]] <= r.end]
-        if hits:
-            detected += 1
-            delays.append((tt.t[hits[0][0]] - r.start).total_seconds() / 60)
-    out.update({"false_alerts_per_day": len(false_eps) / test_days, "incidents_evaluable": len(evaluable),
-                "incidents_detected": detected, "median_detection_delay_min": float(np.median(delays)) if delays else None,
-                "claim": "detection of an ongoing incident, not failure prediction"})
+    evaluation = evaluate_incidents(df, X, inc, cfg)
+    scored = evaluation.pop("scored_windows")
+    out.update(evaluation)
+    scored.to_parquet(resolve(cfg, "results") / "metropt_scores.parquet", index=False)
     return out
 
 

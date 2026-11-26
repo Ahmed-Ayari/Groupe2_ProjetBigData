@@ -21,3 +21,10 @@ manifests/splits.json
 logs/
 manifests/ukdale_all.csv
 manifests/ukdale_listing_cache.json
+
+# OS/editor-local files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~

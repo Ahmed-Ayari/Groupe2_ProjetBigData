@@ -35,7 +35,8 @@ download:
 pilot:
 	$(PY) -m bigdata.campaign pilot && $(PY) -m bigdata.diagnose
 grid:
-	$(PY) -m bigdata.campaign grid
+	$(PY) -m bigdata.campaign grid --lot cal_2
+	$(PY) -m bigdata.campaign grid --lot cal_1
 sizeup-cal:
 	$(PY) -m bigdata.campaign sizeup-cal --P $(P)
 fit:

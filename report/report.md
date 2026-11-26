@@ -20,7 +20,7 @@ Positioning: precise difference of this work. TO_WRITE.
 
 ## Part II
 ### 4. Contribution
-Architecture (docs: src/bigdata), B0 and Spark pipelines, decision algorithm, features, objective min p x T_hat s.t. T_hat + margin <= D, calibration cost. TO_WRITE.
+Architecture (docs: src/bigdata), B0 and Spark pipelines, decision algorithm, features, objective min p x T_hat s.t. T_hat*(1+relative margin) <= D, calibration cost. TO_WRITE.
 
 ### 5. Experimental study
 5.1 Hardware and versions: environment/hardware.json. 5.2 Data and need: docs/audit_metropt3.md, manifests, licences (CC BY 4.0), quality, labels limits.

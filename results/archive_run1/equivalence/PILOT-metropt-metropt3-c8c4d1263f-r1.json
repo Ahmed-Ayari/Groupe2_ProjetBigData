@@ -1,0 +1,10 @@
+{
+  "ok": true,
+  "rows_candidate": 50782,
+  "rows_reference": 50782,
+  "atol": 1e-09,
+  "rtol": 1e-09,
+  "bad_columns": [],
+  "max_scaled_error": 1.7386540125968737e-05,
+  "run_id": "PILOT-metropt-metropt3-c8c4d1263f-r1"
+}

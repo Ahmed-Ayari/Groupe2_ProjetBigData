@@ -53,9 +53,11 @@ def metropt_a(spark, input_path: str, cols: list[str], w_s: int, equipment_id: s
     if scope == "prepared":
         df = spark.read.parquet(input_path).select("ts_us", *cols)
     else:
-        schema = "timestamp string, " + ", ".join(f"{c} double" for c in cols)
-        raw = spark.read.csv(input_path, header=True, schema=schema)
-        df = raw.select(F.expr("unix_micros(to_timestamp(timestamp))").alias("ts_us"), *cols)
+        raw = spark.read.csv(input_path, header=True, inferSchema=True)
+        df = raw.select(
+            F.unix_micros(F.to_timestamp(F.col("timestamp"))).alias("ts_us"),
+            *(F.col(c).cast("double").alias(c) for c in cols),
+        )
     df = df.withColumn("window_id", F.expr(f"ts_us div {w_us}"))
     aggs = []
     for c in cols:

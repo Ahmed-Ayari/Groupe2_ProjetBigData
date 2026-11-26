@@ -28,7 +28,8 @@ def main() -> None:
         if f.exists():
             body = f.read_text()
             if name == "decisions.json":
-                d = json.loads(body); body = json.dumps({k: d[k] for k in ("model", "cv", "margin_s", "B2", "n_calibration_runs", "fit_and_select_seconds", "calibration_cost_s")}, indent=2)
+                d = json.loads(body); keys = ("model", "cv", "margin_relative", "margin_quantile", "B2", "n_calibration_runs", "fit_and_select_seconds", "calibration_cost_s")
+                body = json.dumps({k: d[k] for k in keys if k in d}, indent=2)
             L += ["", f"## results/{name}", "```", body[:6000], "```"]
         else:
             L += ["", f"## results/{name}", "not executed / not available"]

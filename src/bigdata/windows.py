@@ -34,7 +34,8 @@ def block_partials(df: pd.DataFrame, t_ns: np.ndarray, w_s: float, cols: list[st
     for c in cols:
         n = g[c].count()
         mean = g[c].mean()
-        m2 = g[c].apply(lambda x: float(((x - x.mean()) ** 2).sum()))
+        centered = d[c] - d["window_id"].map(mean)
+        m2 = centered.pow(2).groupby(d["window_id"], sort=True).sum()
         out[f"{c}__n"] = n
         out[f"{c}__mean"] = mean
         out[f"{c}__m2"] = m2

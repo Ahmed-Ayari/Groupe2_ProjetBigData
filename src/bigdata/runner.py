@@ -2,6 +2,7 @@
 from __future__ import annotations
 import argparse, csv, hashlib, json, os, platform, shutil, subprocess, sys, tempfile, time
 from dataclasses import dataclass, asdict, field
+from functools import lru_cache
 from pathlib import Path
 import pandas as pd
 import psutil
@@ -40,15 +41,22 @@ class Spec:
     timeout_s: int | None = None
 
     def run_id(self) -> str:
-        key = "-".join(str(v) for v in (self.method, self.dataset, self.lot, self.workload, self.engine, self.scope,
+        key = "-".join(str(v) for v in (git_hash(), self.method, self.dataset, self.lot, self.workload, self.engine, self.scope,
                                          self.policy, self.p, self.P, self.Q, self.aqe, self.strategy,
                                          self.stop_after, self.repetition))
         return f"{self.method}-{self.dataset}-{self.lot}-{hashlib.sha1(key.encode()).hexdigest()[:10]}-r{self.repetition}"
 
 
+@lru_cache(maxsize=1)
 def git_hash() -> str:
     try:
-        return subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT, stderr=subprocess.DEVNULL).decode().strip()
+        revision = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT, stderr=subprocess.DEVNULL).decode().strip()
+        changes = subprocess.check_output(
+            ["git", "diff", "--binary", "HEAD", "--", "src/bigdata", "tests", "scripts", "configs", "Makefile"],
+            cwd=ROOT, stderr=subprocess.DEVNULL)
+        if changes:
+            return f"{revision}-{hashlib.sha1(changes).hexdigest()[:8]}"
+        return revision
     except Exception:
         return "no-git"
 
@@ -90,7 +98,7 @@ def run_experiment(spec: Spec, cfg: dict | None = None, results_dir: Path | None
     for d in (out, ev):
         shutil.rmtree(d, ignore_errors=True)
     rj = Path(tempfile.mkstemp(suffix=".json")[1])
-    cmd = [sys.executable, "-m", "bigdata.run_one", "--dataset", spec.dataset, "--engine", spec.engine,
+    cmd = [sys.executable, "-m", "bigdata.run_one", "--dataset", spec.dataset, "--method", spec.method, "--engine", spec.engine,
            "--workload", spec.workload, "--scope", spec.scope, "--lot", spec.lot, "--p", str(spec.p), "--P", str(spec.P),
            "--Q", str(spec.Q), "--aqe", str(spec.aqe), "--strategy", spec.strategy, "--stop-after", spec.stop_after,
            "--out", str(out), "--event-dir", str(ev), "--result-json", str(rj)]
@@ -123,7 +131,7 @@ def run_experiment(spec: Spec, cfg: dict | None = None, results_dir: Path | None
     if status == "OK" and spec.stop_after == "write" and out.exists():
         ref = results / "reference" / f"{spec.dataset}_{spec.lot}_{spec.workload}.parquet"
         kind = spec.dataset
-        if spec.engine == "local" and not ref.exists():
+        if spec.method == "B0" and spec.engine == "local" and not ref.exists():
             ref.parent.mkdir(parents=True, exist_ok=True)
             shutil.copytree(out, ref)
             check = "reference_created"

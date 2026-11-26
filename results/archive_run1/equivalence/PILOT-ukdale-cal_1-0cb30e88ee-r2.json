@@ -1,0 +1,10 @@
+{
+  "ok": true,
+  "rows_candidate": 7200,
+  "rows_reference": 7200,
+  "atol": 1e-06,
+  "rtol": 1e-07,
+  "bad_columns": [],
+  "max_scaled_error": 0.0,
+  "run_id": "PILOT-ukdale-cal_1-0cb30e88ee-r2"
+}

@@ -1,16 +1,1 @@
 method,dataset,status,n_runs
-B0,metropt,OK,6
-B0,ukdale,OK,30
-B1,ukdale,OK,24
-B2,ukdale,OK,30
-B3,ukdale,OK,25
-B4,ukdale,OK,25
-B4_nomargin,ukdale,OK,30
-GRID,ukdale,OK,63
-GRID_AQEOFF,ukdale,OK,27
-GRID_Q,ukdale,OK,12
-GRID_STRAT,ukdale,OK,27
-PILOT,metropt,ERROR,18
-PILOT,metropt,OK,9
-PILOT,ukdale,OK,45
-SIZEUP,ukdale,OK,36

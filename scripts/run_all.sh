@@ -32,7 +32,8 @@ run_step() {
 
 run_step pilot "$PY" -m bigdata.campaign pilot
 run_step diagnose "$PY" -m bigdata.diagnose
-run_step grid "$PY" -m bigdata.campaign grid
+run_step grid-cal_2 "$PY" -m bigdata.campaign grid --lot cal_2
+run_step grid-cal_1 "$PY" -m bigdata.campaign grid --lot cal_1
 P="$("$PY" scripts/select_grid_p.py)"
 printf '\nUsing grid-selected P=%s for size-up.\n' "$P"
 run_step sizeup-cal "$PY" -m bigdata.campaign sizeup-cal --P "$P"

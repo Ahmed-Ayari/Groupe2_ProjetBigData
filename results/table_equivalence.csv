@@ -1,13 +1,1 @@
 method,output_check,n
-B0,ok,28
-B1,ok,24
-B2,ok,30
-B3,ok,25
-B4,ok,25
-B4_nomargin,ok,30
-GRID,ok,63
-GRID_AQEOFF,ok,27
-GRID_Q,ok,12
-GRID_STRAT,ok,27
-PILOT,ok,27
-SIZEUP,ok,36

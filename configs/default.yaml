@@ -53,7 +53,7 @@ lots:
 selector:
   max_depth: 3
   margin_quantile: 0.9
-  deadline_scenarios: {moderate: 0.5, tight: 0.8}   # quantile of calibration throughput
+  deadline_scenarios: {moderate: 0.5, tight: 0.8, strict: 0.2}   # quantile of calibration throughput
   fixed_P_for_b3: null                              # null = P chosen by B2 on calibration
 mining:
   split: {train_end: "2020-06-07 21:36:00", val_end: "2020-07-20 12:48:00"}

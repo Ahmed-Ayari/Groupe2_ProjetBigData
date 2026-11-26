@@ -55,27 +55,27 @@ def pilot_specs(cfg: dict, lot: str) -> list[Spec]:
     return out
 
 
-def grid_specs(cfg: dict, lot: str, Q: int | None = None) -> list[Spec]:
-    """Q2: full p x P sweep at ONE volume (AQE on), AQE-off sweep to isolate P, strategy and Q experiments."""
+def grid_specs(cfg: dict, lot: str | list[str], Q: int | None = None) -> list[Spec]:
+    """Q2: full p x P sweep at each selected calibration volume, plus AQE-off, strategy and Q experiments."""
     sc, reps = cfg["spark"], cfg["run"]["repetitions_grid"]
     Q = Q or sc["Q_default"]
-    sp = split_of(cfg, lot)
     out = []
-    for r in range(1, reps + 1):
-        out.append(Spec("B0", "ukdale", "local", lot, "A", "raw", "local", repetition=r, split=sp))
-        for p in sc["p_values"]:
-            for P in sc["P_values"]:
-                out.append(Spec("GRID", "ukdale", "spark", lot, "A", "raw", "grid", p, P, Q, 1, "hash", "write", r, split=sp))
-                out.append(Spec("GRID", "ukdale", "spark", lot, "A", "prepared", "grid", p, P, Q, 1, "hash", "write", r, split=sp))
-                out.append(Spec("GRID_AQEOFF", "ukdale", "spark", lot, "A", "prepared", "grid-aqe-off", p, P, Q, 0, "hash", "write", r, split=sp))
-                out.append(Spec("GRID_STRAT", "ukdale", "spark", lot, "A", "prepared", "grid-range", p, P, Q, 1, "range", "write", r, split=sp))
-        pmax = max(sc["p_values"])
-        for q in sorted({1, pmax, 4 * pmax, 16 * pmax}):       # read partitions, P fixed
-            out.append(Spec("GRID_Q", "ukdale", "spark", lot, "A", "raw", f"grid-Q{q}", pmax, sc["P_values"][1], q, 1, "hash", "write", r, split=sp))
-        # Treatment B (required at least on UK-DALE)
-        out.append(Spec("B0", "ukdale", "local", lot, "B", "prepared", "local", repetition=r, split=sp))
-        for p in sc["p_values"]:
-            out.append(Spec("GRID", "ukdale", "spark", lot, "B", "prepared", "grid", p, sc["P_values"][1], Q, 1, "hash", "write", r, split=sp))
+    for lot_id in [lot] if isinstance(lot, str) else lot:
+        sp = split_of(cfg, lot_id)
+        for r in range(1, reps + 1):
+            out.append(Spec("B0", "ukdale", "local", lot_id, "A", "raw", "local", repetition=r, split=sp))
+            for p in sc["p_values"]:
+                for P in sc["P_values"]:
+                    out.append(Spec("GRID", "ukdale", "spark", lot_id, "A", "raw", "grid", p, P, Q, 1, "hash", "write", r, split=sp))
+                    out.append(Spec("GRID", "ukdale", "spark", lot_id, "A", "prepared", "grid", p, P, Q, 1, "hash", "write", r, split=sp))
+                    out.append(Spec("GRID_AQEOFF", "ukdale", "spark", lot_id, "A", "prepared", "grid-aqe-off", p, P, Q, 0, "hash", "write", r, split=sp))
+                    out.append(Spec("GRID_STRAT", "ukdale", "spark", lot_id, "A", "prepared", "grid-range", p, P, Q, 1, "range", "write", r, split=sp))
+            pmax = max(sc["p_values"])
+            for q in sorted({1, pmax, 4 * pmax, 16 * pmax}):
+                out.append(Spec("GRID_Q", "ukdale", "spark", lot_id, "A", "raw", f"grid-Q{q}", pmax, sc["P_values"][1], q, 1, "hash", "write", r, split=sp))
+            out.append(Spec("B0", "ukdale", "local", lot_id, "B", "prepared", "local", repetition=r, split=sp))
+            for p in sc["p_values"]:
+                out.append(Spec("GRID", "ukdale", "spark", lot_id, "B", "prepared", "grid", p, sc["P_values"][1], Q, 1, "hash", "write", r, split=sp))
     return out
 
 
@@ -91,6 +91,8 @@ def sizeup_specs(cfg: dict, split: str, P: int, Q: int | None = None, reps: int 
             for p in sc["p_values"]:
                 out.append(Spec("B1" if p == 1 else "SIZEUP", "ukdale", "spark", lot, "A", "raw", "single-node" if p == 1 else "sizeup",
                                 p, P, Q, 1, "hash", "write", r, split=split))
+                if p in {2, 4}:
+                    out.append(Spec("B0mp", "ukdale", "local", lot, "A", "raw", "multiprocessing", p, P, Q, 1, "hash", "write", r, split=split))
     return out
 
 
@@ -98,11 +100,15 @@ def final_specs(cfg: dict, decisions: dict) -> list[Spec]:
     """Evaluation on held-out lots: B0, B1 and the frozen/selected configs of B2, B3, B4, B4_nomargin."""
     reps, sc = cfg["run"]["repetitions_final"], cfg["spark"]
     Q = sc["Q_default"]
+    worker_counts = [p for p in (2, 4) if p in sc["p_values"]]
     out = []
     for lot in lots_of(cfg, "test"):
         for r in range(1, reps + 1):
             out.append(Spec("B0", "ukdale", "local", lot, "A", "raw", "local", repetition=r, split="test"))
             out.append(Spec("B1", "ukdale", "spark", lot, "A", "raw", "single-node", 1, decisions["B2"]["P"], Q, 1, "hash", "write", r, split="test"))
+            for workers in worker_counts:
+                out.append(Spec("B0mp", "ukdale", "local", lot, "A", "raw", "multiprocessing", workers,
+                                decisions["B2"]["P"], Q, 1, "hash", "write", r, split="test"))
     for d in decisions["decisions"]:
         if not d["feasible"]:
             continue
@@ -117,17 +123,20 @@ def final_budget_specs(cfg: dict) -> list[Spec]:
     reps, sc = cfg["run"]["repetitions_final"], cfg["spark"]
     Q = sc["Q_default"]
     test_lots = lots_of(cfg, "test")
-    p, P = max(sc["p_values"]), max(sc["P_values"])
+    selector_p, P = max(sc["p_values"]), max(sc["P_values"])
+    worker_counts = [workers for workers in (2, 4) if workers in sc["p_values"]]
     out = []
     for lot in test_lots:
         for r in range(1, reps + 1):
             out.append(Spec("B0", "ukdale", "local", lot, "A", "raw", "local", repetition=r, split="test"))
             out.append(Spec("B1", "ukdale", "spark", lot, "A", "raw", "single-node", 1, P, Q, 1, "hash", "write", r, split="test"))
+            for workers in worker_counts:
+                out.append(Spec("B0mp", "ukdale", "local", lot, "A", "raw", "multiprocessing", workers, P, Q, 1, "hash", "write", r, split="test"))
     for scenario in cfg["selector"]["deadline_scenarios"]:
         for lot in test_lots:
             for method in ("B2", "B3", "B4", "B4_nomargin"):
                 for r in range(1, reps + 1):
-                    out.append(Spec(method, "ukdale", "spark", lot, "A", "raw", scenario, p, P, Q, 1, "hash",
+                    out.append(Spec(method, "ukdale", "spark", lot, "A", "raw", scenario, selector_p, P, Q, 1, "hash",
                                     "write", r, split="test"))
     return out
 
@@ -143,11 +152,17 @@ def execute(specs: list[Spec], cfg: dict, budget_only: bool = False) -> None:
     print(f"{len(ordered)} runs planned, {len(todo)} to do, per-run timeout {cfg['run']['timeout_s']} s "
           f"(worst case {len(todo) * cfg['run']['timeout_s'] / 3600:.1f} h)")
     runs = resolve(cfg, "results") / "runs.csv"
-    if runs.exists():
-        df = pd.read_csv(runs)
-        med = df[df.status == "OK"].submit_duration_s.median()
+    estimate_source = runs
+    if not runs.exists() or not pd.read_csv(runs).status.eq("OK").any():
+        archived = runs.parent / "archive_run1" / "runs.csv"
+        if archived.exists():
+            estimate_source = archived
+    if estimate_source.exists():
+        df = pd.read_csv(estimate_source)
+        med = pd.to_numeric(df.loc[df.status == "OK", "submit_duration_s"], errors="coerce").median()
         if pd.notna(med):
-            print(f"estimated from logged runs: ~{len(todo) * med / 3600:.1f} h (median submit {med:.1f} s)")
+            print(f"estimated from {estimate_source.relative_to(runs.parent)}: ~{len(todo) * med / 3600:.1f} h "
+                  f"(median submit {med:.1f} s)")
     if budget_only:
         return
     for i, s in enumerate(todo, 1):
@@ -167,7 +182,8 @@ if __name__ == "__main__":
     if a.what == "pilot":
         lot = a.lot or cal[0]; prepare_lots = [lot]; specs = pilot_specs(cfg, lot)
     elif a.what == "grid":
-        lot = a.lot or cal[len(cal) // 2]; prepare_lots = [lot]; specs = grid_specs(cfg, lot)
+        grid_lots = [a.lot] if a.lot else [cal[min(1, len(cal) - 1)], cal[0]]
+        prepare_lots = grid_lots; specs = grid_specs(cfg, grid_lots)
     elif a.what.startswith("sizeup"):
         sp = "calibration" if a.what.endswith("cal") else "test"
         prepare_lots = lots_of(cfg, sp); specs = sizeup_specs(cfg, sp, a.P or cfg["spark"]["P_values"][1])

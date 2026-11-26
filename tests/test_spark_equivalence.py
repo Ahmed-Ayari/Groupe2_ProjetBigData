@@ -33,8 +33,12 @@ def test_metropt_a_and_b(spark, tmp_path, cfg):
     got = _write(sa, tmp_path / "a")
     a, r = tol(cfg)
     assert compare(got, ref_a, a, r)["ok"]
-    # raw CSV scope gives the same numbers as prepared scope
-    got_raw = _write(S.metropt_a(spark, str(csv), cols, 300, "metro1", "raw"), tmp_path / "araw")
+    # A leading unnamed index column must not shift the timestamp/sensor fields.
+    indexed_csv = tmp_path / "m_with_index.csv"
+    raw = pd.read_csv(csv)
+    raw.insert(0, "Unnamed: 0", np.arange(len(raw)))
+    raw.to_csv(indexed_csv, index=False)
+    got_raw = _write(S.metropt_a(spark, str(indexed_csv), cols, 300, "metro1", "raw"), tmp_path / "araw")
     assert compare(got_raw, ref_a, a, r)["ok"]
     # Treatment B (the synthetic file has a gap, so NaN rules are exercised)
     ref_b = local_ref.metropt_treatment_b(ref_a, cfg)

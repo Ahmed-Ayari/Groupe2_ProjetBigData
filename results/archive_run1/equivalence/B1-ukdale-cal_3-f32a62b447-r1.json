@@ -1,0 +1,10 @@
+{
+  "ok": true,
+  "rows_candidate": 28799,
+  "rows_reference": 28799,
+  "atol": 1e-06,
+  "rtol": 1e-07,
+  "bad_columns": [],
+  "max_scaled_error": 0.0,
+  "run_id": "B1-ukdale-cal_3-f32a62b447-r1"
+}

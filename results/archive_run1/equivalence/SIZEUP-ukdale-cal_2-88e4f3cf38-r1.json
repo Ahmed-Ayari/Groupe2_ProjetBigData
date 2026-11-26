@@ -1,0 +1,10 @@
+{
+  "ok": true,
+  "rows_candidate": 10801,
+  "rows_reference": 10801,
+  "atol": 1e-06,
+  "rtol": 1e-07,
+  "bad_columns": [],
+  "max_scaled_error": 0.0,
+  "run_id": "SIZEUP-ukdale-cal_2-88e4f3cf38-r1"
+}

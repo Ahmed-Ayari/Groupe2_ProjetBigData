@@ -35,6 +35,17 @@ def test_window_cut_across_blocks_equals_single_pass():
     np.testing.assert_allclose(chunked.filter(like="x__").to_numpy(), full.filter(like="x__").to_numpy(), rtol=1e-12)
 
 
+def test_vectorized_m2_matches_centered_reference_to_1e_9():
+    rng = np.random.default_rng(42)
+    values = 1e6 + rng.normal(0, 3, 5000)
+    t = (np.arange(len(values)) * 10 * W.NS).astype(np.int64)
+    frame = pd.DataFrame({"x": values})
+    partials = W.block_partials(frame, t, 300, ["x"])
+    expected = frame.assign(window_id=W.window_ids(t, 300)).groupby("window_id").x.apply(
+        lambda x: float(((x - x.mean()) ** 2).sum()))
+    np.testing.assert_allclose(partials.set_index("window_id")["x__m2"], expected, rtol=1e-9, atol=1e-12)
+
+
 def test_boundary_timestamp_belongs_to_next_window():
     t = np.array([299 * W.NS, 300 * W.NS], dtype=np.int64)
     assert list(W.window_ids(t, 300)) == [0, 1]
@@ -108,6 +119,22 @@ def test_window_cut_between_two_files(tmp_path, cfg):
     assert both.loc[1363546803, "n"] > 0
     assert both.n.sum() == 6 * 16000                                              # nothing lost, nothing double counted
     assert both.index.is_unique
+
+
+def test_b0mp_is_exactly_equivalent_to_b0(tmp_path, cfg):
+    from bigdata.equivalence import compare
+    synth.write_calibration(tmp_path / "cal.cfg")
+    cal = ukdale.parse_calibration(tmp_path / "cal.cfg")
+    files = [
+        synth.write_flac(tmp_path / "a", 1363546800, 0, seconds=4, seed=3),
+        synth.write_flac(tmp_path / "b", 1363546805, 0, seconds=4, seed=4),
+    ]
+    sequential = local_ref.ukdale_treatment_a(files, cal, cfg)
+    parallel = local_ref.ukdale_treatment_a_mp(files, cal, cfg, workers=2)
+    assert list(parallel.columns) == list(sequential.columns)
+    atol, rtol = 1e-6, 1e-7
+    result = compare(parallel, sequential, atol, rtol)
+    assert result["ok"], result
 
 
 def test_voltage_channel_evidence(tmp_path, cfg):

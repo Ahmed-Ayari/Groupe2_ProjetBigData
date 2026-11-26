@@ -54,7 +54,7 @@ make metropt
 make ukdale-list WEEKS="2013/wk11"
 make lots                      # disjoint calibration/test lots (needs all configured lot volumes plus gap files)
 python -m bigdata.acquire ukdale-download --lots cal_1 --dry-run  # previews the cfg and cal_1 FLAC downloads
-make download                  # downloads all six lots plus cfg; SHA-256, disk guard (stops under 10 GB free)
+make download                  # downloads only the six configured lots plus cfg; SHA-256, disk guard (stops under 10 GB free)
 
 # MANDATORY CHECK before any benchmark (channel order, scaling, timestamps):
 FILE=data/raw/ukdale/house_1/2013/wk11/vi-1363392000_236972.flac
@@ -99,18 +99,19 @@ Run the manual stages below, or after the budget gate use `bash scripts/run_all.
 It does not run MetroPT mining; run `make mining` separately. Do not run the script concurrently with any Spark job.
 
 ```bash
-make grid                      # p x P sweep at one calibration lot + AQE off + range strategy + Q sweep
+make grid                      # full p x P sweep on cal_2 and cal_1, plus AQE off + range strategy + Q sweep
 P=64                           # replace with the P selected from the grid results
-make sizeup-cal P="$P"         # size-up / Q1 on calibration lots
+make sizeup-cal P="$P"         # size-up / Q1 on calibration lots, including B0mp (2 and 4 workers)
 make fit                       # model comparison (grouped CV), margin, deadlines, decisions.json  (calibration lots only)
-make sizeup-test P="$P" && make final   # held-out lots; final uses 5 repetitions
+make sizeup-test P="$P" && make final   # held-out lots, including B0mp; final uses 5 repetitions
 make evaluate                  # hit rate, cost, paired ratios, bootstrap
 make mining                    # IsolationForest on MetroPT-3; ongoing-incident detection only
 make plots                     # figures + tables + docs/report_facts.md
 make package                   # dist/tests.zip and dist/results.zip
 ```
-With the current chronological split, the four verified incident intervals are in train/validation, not test.
-`make mining` therefore reports zero test incidents evaluable; it cannot establish held-out incident detection performance.
+`make mining` fits a new scaler and IsolationForest strictly before each verified incident, selects a threshold on the
+preceding normal validation slice, and evaluates the incident plus one-day buffers. This is expanding-window
+ongoing-incident detection, never failure prediction.
 The initial `make pilot` runs B0 vs Spark p=1,2,4 with phase probes and 3 repetitions, then runs `bigdata.diagnose` to write
 `docs/pilot_diagnosis.md`. Runs are randomized with a fixed seed; completed `OK`, `TIMEOUT`, and
 `EQUIV_FAIL` run IDs are skipped on resume, while ordinary errors can be retried. Timeouts are censored, never successes;

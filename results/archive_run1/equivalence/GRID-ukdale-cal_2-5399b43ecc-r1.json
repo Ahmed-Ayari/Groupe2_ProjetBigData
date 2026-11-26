@@ -1,0 +1,10 @@
+{
+  "ok": true,
+  "rows_candidate": 10801,
+  "rows_reference": 10801,
+  "atol": 1e-06,
+  "rtol": 1e-07,
+  "bad_columns": [],
+  "max_scaled_error": 1.8179458894141327e-08,
+  "run_id": "GRID-ukdale-cal_2-5399b43ecc-r1"
+}

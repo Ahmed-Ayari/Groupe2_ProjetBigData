@@ -36,8 +36,9 @@ def _ok(runs: pd.DataFrame) -> pd.DataFrame:
 
 def fig_time_vs_volume(runs, out):
     r = _ok(runs); r = r[(r.dataset == "ukdale") & (r.workload == "A") & (r.scope == "raw")]
-    r["label"] = np.where(r.engine == "local", "B0 local Python", "Spark p=" + r.p.astype("Int64").astype(str))
-    r = r[r.method.isin(["B0", "B1", "SIZEUP"])]
+    r["label"] = np.where(r.method == "B0mp", "B0mp Python p=" + r.p.astype("Int64").astype(str),
+                          np.where(r.engine == "local", "B0 local Python", "Spark p=" + r.p.astype("Int64").astype(str)))
+    r = r[r.method.isin(["B0", "B0mp", "B1", "SIZEUP"])]
     if r.empty: return SKIPPED.append("time_vs_volume")
     fig, ax = plt.subplots(figsize=(6, 4))
     for lab, g in r.groupby("label"):
@@ -77,6 +78,29 @@ def fig_partitions(runs, out):
     ax[0].legend(fontsize=7)
     _save(fig, out, "fig_partitions_effect", "duration, shuffle volume and memory vs P (prepared scope), AQE on/off", "decode cost (prepared scope excludes it)",
           "H2 / Q2", f"{len(r)} runs")
+
+
+def fig_initial_effective_partitions(runs, out):
+    r = _ok(runs)
+    r = r[(r.dataset == "ukdale") & (r.workload == "A") & (r.scope == "prepared")
+          & r.method.isin(["GRID", "GRID_AQEOFF"])]
+    r["P_effective"] = pd.to_numeric(r.P_effective, errors="coerce")
+    r = r.dropna(subset=["P_initial", "P_effective"])
+    if r.empty:
+        return SKIPPED.append("initial_effective_partitions")
+    fig, ax = plt.subplots(figsize=(6, 4))
+    for (method, p), group in r.groupby(["method", "p"]):
+        med = group.groupby("P_initial").P_effective.median()
+        ax.plot(med.index, med.values, marker="o", label=f"{'AQE off' if method == 'GRID_AQEOFF' else 'AQE on'}, p={p}")
+    lim = [0, max(pd.to_numeric(r.P_initial).max(), r.P_effective.max()) * 1.05]
+    ax.plot(lim, lim, "k--", linewidth=0.8, label="no coalescing")
+    ax.set(xlabel="P_initial (requested partitions)", ylabel="P_effective (last shuffle-reading stage tasks)",
+           title="AQE partition coalescing", xscale="log", yscale="log")
+    ax.legend(fontsize=7)
+    _save(fig, out, "fig_initial_effective_partitions",
+          "median effective shuffle tasks vs requested P, with AQE on/off",
+          "partition counts outside the measured workload and Spark settings",
+          "AQE reduces effective partitions after shuffle", f"{len(r)} runs")
 
 
 def fig_cost_and_hits(out_dir: Path, res: Path):
@@ -128,7 +152,7 @@ def table_failures(runs, res: Path):
 def main() -> None:
     cfg = load_config(); res = resolve(cfg, "results"); out = res / "figures"; out.mkdir(parents=True, exist_ok=True)
     runs = pd.read_csv(res / "runs.csv", low_memory=False)
-    for f in (fig_time_vs_volume, fig_speedup, fig_partitions, fig_task_times):
+    for f in (fig_time_vs_volume, fig_speedup, fig_partitions, fig_initial_effective_partitions, fig_task_times):
         f(runs, out)
     fig_cost_and_hits(out, res); fig_model_accuracy(out, res); table_failures(runs, res)
     (out / "figures_skipped.txt").write_text("\n".join(SKIPPED))

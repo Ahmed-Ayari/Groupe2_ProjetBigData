@@ -1,0 +1,10 @@
+{
+  "ok": true,
+  "rows_candidate": 43201,
+  "rows_reference": 43201,
+  "atol": 1e-06,
+  "rtol": 1e-07,
+  "bad_columns": [],
+  "max_scaled_error": 0.0,
+  "run_id": "B0-ukdale-test_3-3a8b3ad3e0-r3"
+}
