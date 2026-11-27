@@ -2,7 +2,6 @@
 from __future__ import annotations
 import argparse, csv, hashlib, json, os, platform, shutil, subprocess, sys, tempfile, time
 from dataclasses import dataclass, asdict, field
-from functools import lru_cache
 from pathlib import Path
 import pandas as pd
 import psutil
@@ -47,18 +46,19 @@ class Spec:
         return f"{self.method}-{self.dataset}-{self.lot}-{hashlib.sha1(key.encode()).hexdigest()[:10]}-r{self.repetition}"
 
 
-@lru_cache(maxsize=1)
 def git_hash() -> str:
-    try:
-        revision = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT, stderr=subprocess.DEVNULL).decode().strip()
-        changes = subprocess.check_output(
-            ["git", "diff", "--binary", "HEAD", "--", "src/bigdata", "tests", "scripts", "configs", "Makefile"],
-            cwd=ROOT, stderr=subprocess.DEVNULL)
-        if changes:
-            return f"{revision}-{hashlib.sha1(changes).hexdigest()[:8]}"
-        return revision
-    except Exception:
-        return "no-git"
+    override = os.environ.get("BIGDATA_CODE_VERSION")
+    if override:
+        return override
+    files = [
+        *(ROOT / "src" / "bigdata").glob("*.py"),
+        ROOT / "configs" / "default.yaml",
+        *(ROOT / "scripts").glob("*.sh"),
+    ]
+    digest = hashlib.sha1()
+    for path in sorted((path for path in files if path.is_file()), key=lambda path: path.as_posix()):
+        digest.update(path.read_bytes())
+    return digest.hexdigest()[:10]
 
 
 def environment_id(cfg: dict) -> str:

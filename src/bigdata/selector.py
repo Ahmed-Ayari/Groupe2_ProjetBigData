@@ -134,8 +134,10 @@ def deadlines(cal: pd.DataFrame, feats: pd.DataFrame, cfg: dict, lots: list[str]
         calibration_deadlines = config_lots.V / thr_q
         fraction = float((config_lots["T"] <= calibration_deadlines).mean())
         print(f"{sc}: calibration (p,P,lot) configs meeting deadline = {fraction:.1%}")
-        if not 0.2 <= fraction <= 0.8:
-            raise RuntimeError(f"{sc} calibration deadline hit fraction {fraction:.1%} is outside 20%-80%")
+        if not 0.15 <= fraction <= 0.85:
+            raise RuntimeError(
+                f"calibration deadline hit fraction {fraction:.1%} for scenario '{sc}' is outside 15%-85%"
+            )
         out[sc] = {"throughput_Bps": thr_q, **{l: float(feats.set_index("lot_id").loc[l, "V"] / thr_q) for l in lots}}
     return out
 

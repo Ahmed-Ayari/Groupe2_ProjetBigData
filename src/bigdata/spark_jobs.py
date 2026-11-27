@@ -6,7 +6,9 @@ phase-isolation probes via stop_after).
 from __future__ import annotations
 import os, sys
 from pathlib import Path
+import pandas as pd
 from pyspark.sql import SparkSession, Window, functions as F
+from pyspark.sql.types import DoubleType, StringType, StructField, StructType
 
 UK_SCHEMA = "window_id long, n long, sum_i2 double, sum_u2 double, sum_p double, max_i double"
 
@@ -53,7 +55,12 @@ def metropt_a(spark, input_path: str, cols: list[str], w_s: int, equipment_id: s
     if scope == "prepared":
         df = spark.read.parquet(input_path).select("ts_us", *cols)
     else:
-        raw = spark.read.csv(input_path, header=True, inferSchema=True)
+        header = pd.read_csv(input_path, nrows=1).columns
+        schema = StructType([
+            StructField(name, StringType() if name == "timestamp" else DoubleType(), True)
+            for name in header
+        ])
+        raw = spark.read.csv(input_path, header=True, schema=schema)
         df = raw.select(
             F.unix_micros(F.to_timestamp(F.col("timestamp"))).alias("ts_us"),
             *(F.col(c).cast("double").alias(c) for c in cols),

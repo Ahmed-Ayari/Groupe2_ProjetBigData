@@ -119,7 +119,8 @@ def evaluate_incidents(df: pd.DataFrame, X: pd.DataFrame, incidents: pd.DataFram
         "median_detection_delay_min": float(np.median(delays)) if delays else None,
         "false_alerts_per_day_outside_incidents": false_alert_total / normal_days_total,
         "incidents": per_incident,
-        "note": "The first incident (18 Apr) has comparatively little history for training.",
+        "note": ("The first incident (18 Apr) has about 18,000 windows available for training. "
+                 "Each threshold is tuned on about one day of validation data, so results are indicative only."),
         "claim": "detection of an ongoing incident only, never prediction",
         "scored_windows": pd.concat(scored, ignore_index=True),
     }

@@ -122,6 +122,34 @@ def test_deadlines_defined_from_calibration_only(tmp_path, cfg):
     assert (cal.lot_id.str.startswith("cal")).all()
 
 
+@pytest.mark.parametrize(("q", "expected"), [(0.85, 0.85), (0.15, 0.15)])
+def test_deadlines_accept_hit_fraction_boundaries(cfg, q, expected, capsys):
+    cal = pd.DataFrame([
+        {"p": 1, "P": 16, "lot_id": f"lot{i}", "T": 1 / i, "V": 1.0}
+        for i in range(1, 21)
+    ])
+    feats = pd.DataFrame({"lot_id": ["unused"], "V": [1.0]})
+    c = json.loads(json.dumps(cfg))
+    c["selector"]["deadline_scenarios"] = {"boundary": q}
+
+    S.deadlines(cal, feats, c, [])
+
+    assert f"boundary: calibration (p,P,lot) configs meeting deadline = {expected:.1%}" in capsys.readouterr().out
+
+
+def test_deadlines_error_reports_fraction_and_scenario(cfg):
+    cal = pd.DataFrame([
+        {"p": 1, "P": 16, "lot_id": f"lot{i}", "T": 1 / i, "V": 1.0}
+        for i in range(1, 21)
+    ])
+    feats = pd.DataFrame({"lot_id": ["unused"], "V": [1.0]})
+    c = json.loads(json.dumps(cfg))
+    c["selector"]["deadline_scenarios"] = {"too_loose": 0.9}
+
+    with pytest.raises(RuntimeError, match=r"90\.0%.*too_loose"):
+        S.deadlines(cal, feats, c, [])
+
+
 def test_choose_returns_explicit_infeasible(tmp_path, cfg):
     c = fake_env(tmp_path, cfg)
     cal = S.calibration_table(pd.read_csv(tmp_path / "res" / "runs.csv"), S.lot_features(c), c)

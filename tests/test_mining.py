@@ -57,4 +57,5 @@ def test_expanding_incident_evaluation_uses_preincident_training_and_reports_del
     assert incident["training_windows"] > 0 and incident["validation_windows"] > 0
     assert incident["validation_false_alerts_per_day"] <= incident["validation_false_alert_budget_per_day"]
     assert result["claim"] == "detection of an ongoing incident only, never prediction"
-    assert "first incident (18 Apr)" in result["note"]
+    assert "18 Apr" in result["note"] and "18,000 windows" in result["note"]
+    assert "one day of validation" in result["note"] and "indicative only" in result["note"]

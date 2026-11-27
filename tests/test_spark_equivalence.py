@@ -49,6 +49,32 @@ def test_metropt_a_and_b(spark, tmp_path, cfg):
     assert ref_b.prev_missing.sum() >= 2                                      # gap detected, not silently bridged
 
 
+def test_metropt_raw_uses_explicit_schema(spark, tmp_path, monkeypatch):
+    from pyspark.sql.readwriter import DataFrameReader
+    csv = synth.make_metropt_csv(tmp_path / "raw.csv", hours=0.2, step_s=10)
+    raw = pd.read_csv(csv)
+    raw.insert(0, "Unnamed: 0", np.arange(len(raw)))
+    raw.to_csv(csv, index=False)
+    observed = {}
+    original_csv = DataFrameReader.csv
+
+    def capture_csv(reader, path, *args, **kwargs):
+        observed.update(kwargs)
+        return original_csv(reader, path, *args, **kwargs)
+
+    monkeypatch.setattr(DataFrameReader, "csv", capture_csv)
+    cols = ["TP2", "TP3", "Oil_temperature", "Motor_current", "COMP"]
+    result = S.metropt_a(spark, str(csv), cols, 300, "metro1", "raw")
+    result.collect()
+
+    schema = observed["schema"]
+    assert "inferSchema" not in observed
+    assert [(field.name, field.dataType.simpleString()) for field in schema.fields] == [
+        ("Unnamed: 0", "double"), ("timestamp", "string"), *[(name, "double") for name in cols],
+    ]
+    assert "Unnamed: 0" not in result.columns
+
+
 def test_ukdale_raw_prepared_and_boundary(spark, tmp_path, cfg):
     synth.write_calibration(tmp_path / "cal.cfg")
     cal = ukdale.parse_calibration(tmp_path / "cal.cfg")
