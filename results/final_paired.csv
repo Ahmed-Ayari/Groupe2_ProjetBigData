@@ -1,0 +1,12 @@
+scenario,lot,comparison,mean_ratio,ratio_min,ratio_max,run_to_run_dispersion,n_pairs,n_lots,ci_low,ci_high,ci_method,interpretation,note
+moderate,test_1,cost B4/B3 by repetition,1.0235597745890535,1.0060739814008914,1.0448556287077346,0.017421491434868267,5,1,,,not applicable to a single lot,difference exceeds observed run-to-run dispersion,
+moderate,test_2,cost B4/B3 by repetition,0.6565892446493985,0.6496316310602827,0.6625853168969783,0.005294944346787276,5,1,,,not applicable to a single lot,difference exceeds observed run-to-run dispersion,
+moderate,test_3,cost B4/B3 by repetition,1.002006698005468,0.9907510929412641,1.024717649505454,0.012369047151894672,5,1,,,not applicable to a single lot,no measurable difference,
+moderate,ALL,cost B4/B3 (per-lot paired means),0.8940519057479733,0.6565892446493985,1.0235597745890535,,15,3,,,not reported: fewer than 5 test lots,not assessed in aggregate,Fewer than 5 independent test lots: a bootstrap confidence interval would be unreliable.
+tight,test_1,cost B4/B3 by repetition,1.0070505654661779,0.992906540975611,1.0182138464493786,0.011408680407053064,5,1,,,not applicable to a single lot,no measurable difference,
+tight,test_2,cost B4/B3 by repetition,1.000254452245946,0.9877174708406682,1.0089171008862272,0.006979022767526668,5,1,,,not applicable to a single lot,no measurable difference,
+tight,test_3,cost B4/B3 by repetition,0.9990013916964842,0.9873455597753725,1.0074606984834056,0.005726563451376938,5,1,,,not applicable to a single lot,no measurable difference,
+tight,ALL,cost B4/B3 (per-lot paired means),1.002102136469536,0.9990013916964842,1.0070505654661779,,15,3,,,not reported: fewer than 5 test lots,not assessed in aggregate,Fewer than 5 independent test lots: a bootstrap confidence interval would be unreliable.
+strict,test_2,cost B4/B3 by repetition,0.999761585655501,0.9897768558613189,1.004759184628336,0.008058245620065437,5,1,,,not applicable to a single lot,no measurable difference,
+strict,test_3,cost B4/B3 by repetition,0.9957109261325401,0.9906330875056623,1.003399754617342,0.005419966868857173,5,1,,,not applicable to a single lot,no measurable difference,
+strict,ALL,cost B4/B3 (per-lot paired means),0.9977362558940206,0.9957109261325401,0.999761585655501,,10,2,,,not reported: fewer than 5 test lots,not assessed in aggregate,Fewer than 5 independent test lots: a bootstrap confidence interval would be unreliable.

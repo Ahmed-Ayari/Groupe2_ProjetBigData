@@ -1,1 +1,15 @@
 method,output_check,n
+B0,ok,38
+B0mp,ok,48
+B1,ok,24
+B2,ok,45
+B3,ok,40
+B4,ok,40
+B4_nomargin,ok,40
+GRID,ok,126
+GRID_AQEOFF,ok,54
+GRID_Q,ok,24
+GRID_STRAT,ok,54
+PILOT,ok,36
+SIZEUP,fail,1
+SIZEUP,ok,35
